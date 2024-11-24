@@ -18,24 +18,22 @@ from sklearn.preprocessing import LabelEncoder
 ############################ introduction section #############################
 ################### Reading data and showing description ######################
 ###############################################################################
+st.image('./images/logo.jpg',width=300)
 st.logo('./images/logo.jpg')
+st.html("<p style='font-size:12px; padding:0; margin:0; color:grey'>fanshawe college of information technology<br>artifical intelligence and machine learning</p>")
 def page_introduction():
    #st.title("Data Visualization Project")
    #st.title("Group 3")
    #st.write("This project is related to data visualization and analysis of netflix movies and TV shows dataset")
-   
-   st.image('./images/logo.jpg')
    html_text = "<div>\
-                <p style='font-size:12px; padding:0; margin:0; color:grey'>fanshawe college of information technology<br>artifical intelligence and machine learning</p>\
                 <div style='margin:10px; margin-top:30px'>\
                     <p style='margin:0;'>INFO 6151 | Data Visualization<p>\
                     <h1 style='color:red;margin:0;padding:0'>Capstone Project</h1>\
                     <p>Netflix Dataset Analysis</p>\
                 </div>\
                 </div>\
-                <a href='www.google.com'>The project Repo is availble here</a>"
+                <a href='https://github.com/m-hossni/data_visualization_ML_F24'>The project Repo is availble here</a>"
    st.html(html_text)
-   st.image('./images/netflix banner.png')
 data = pd.read_csv('netflix_titles.csv')
 def page1():
     st.title("Netflex TV Shows and Movies Dataset")
@@ -65,10 +63,17 @@ def page_Chart_1():
    st.write("# Chart 1: Distribution of TV Shows and Movies by Type")
    st.write("*   Use ML algorithm to analyse the distribution of TV shows and movies.")
    st.write("* Visualize the proportion using a pie chart, where each slice represents the percentage of TV shows and movies.")
-   donut_chart = alt.Chart(tv_mov_dist).mark_arc(innerRadius=50).encode(
-    theta=alt.Theta(field='count', type="quantitative"),
+   base = alt.Chart(tv_mov_dist).mark_arc(innerRadius=50).encode(
+    theta=alt.Theta(field='count', type="quantitative", stack=True),
     color=alt.Color(field='type', type="nominal"),
+    ).transform_joinaggregate(
+    TotalCount='sum(count)',
+    ).transform_calculate(
+    PercentOfTotal="datum.count / datum.TotalCount"
     )
+   pie = base.mark_arc(innerRadius=80)
+   text = base.mark_text(radius=200,fill= "black", size=20).encode(alt.Text(field='PercentOfTotal', type="quantitative", format=".0%")) 
+   donut_chart = pie + text
    st.altair_chart(donut_chart, use_container_width=True)
 
 
@@ -262,19 +267,13 @@ ratings_combined_movies = pd.DataFrame({'count': movie_rating_counts, 'type': le
 ratings_combined = pd.concat([ratings_combined_movies, ratings_combined_tv], axis=0)
 
 
-
-# Box plot
-plt.figure(figsize=(10, 6))
-plt.boxplot([data[data['type'] == 'Movie']['rating_numeric'], data[data['type'] == 'TV Show']['rating_numeric']],
-            labels=['Movies', 'TV Shows'])
-plt.title('Box Plot of Ratings for Movies and TV Shows')
-plt.ylabel('Rating (Numeric)')
-plt.show()
-
 def page_chart_4_2():
     #ratings_combined_tv
     #ratings_combined_movies
     #ratings_combined
+    st.write("# Chart 4: Distribution of Content by Rating")
+    st.write("* Analyse the distribution of TV shows and movies by rating using ML clustering techniques.")
+    st.write("* Visualize the distribution using a bar chart, where each bar represents a rating category (e.g., G, PG, PG-13, R, etc.) and the height represents the number of TV shows or movies in each category.")
     option = st.selectbox('Select plot', ['Clustered Data', 'Movies and TV Shows Clustered Data', 'Box Plot'], index=0,  key=None, help=None, on_change=None, args=None, kwargs=None, placeholder="Choose an option", disabled=False, label_visibility="visible")
     if option == 'Clustered Data':
        base = alt.Chart(X).encode(x=alt.X('release_year', scale=alt.Scale(domain=[X['release_year'].min(), X['release_year'].max()]))).mark_circle().encode(y='rating_numeric', color='cluster:N').interactive() 
@@ -310,3 +309,4 @@ pg = st.navigation({
     })
 
 pg.run()
+st.image('./images/netflix banner.png')
