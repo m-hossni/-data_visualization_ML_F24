@@ -34,7 +34,9 @@ from team_code import (
     page_Chart_1, 
     page_Chart_2,
     page_Chart_3,
-    page_Chart_4
+    page_Chart_4,
+    heatmap_chart
+
 )
 ##############################################################
 # Load data
@@ -225,6 +227,83 @@ def get_viewport_dimensions():
     viewport_height = st.query_params.get("height", [600])[0]  # Updated here
 
     return int(viewport_width), int(viewport_height)
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+data_dropna = data.dropna().reset_index()
+genres_seprated_movies = []
+genres_seprated_shows = []
+genres_seprated = []
+for i, genres in enumerate(data_dropna['listed_in']):
+  generes_split = genres.split(',')
+  for genre in generes_split:
+      if data_dropna['type'][i] == 'Movie' and genre.strip() not in genres_seprated_movies:
+        genres_seprated_movies.append(genre.strip())
+      if data_dropna['type'][i] == 'TV Show' and genre.strip() not in genres_seprated_shows:
+        genres_seprated_shows.append(genre.strip())
+      if genre.strip() not in genres_seprated:
+        genres_seprated.append(genre.strip())
+
+
+data_genre = data_dropna.copy()
+data_genre['genre'] = data_genre['listed_in'].apply(lambda x : [item.strip() for item in x.split(',')])
+data_genre = data_genre.explode('genre')
+#data_genre
+
+
+def get_duration_val(duration):
+  return int(duration.split()[0])
+data_genre['new_duration'] = data_genre['duration'].apply(get_duration_val)
+#data_genre
+
+movies_list = data_genre[data_genre['type'] == 'Movie']
+duration_genre = movies_list.groupby('genre').agg(
+    average_duration =('new_duration', 'mean'),
+    count = ('new_duration', 'count')
+).reset_index().sort_values(by='average_duration')
+
+
+unique_genres = movies_list['genre'].unique()
+num_genre = len(unique_genres)
+
+
+
+#converting categorical data into numbers
+movies_transformed = movies_list.copy()
+genre_dict = {}
+for i, genre in enumerate(unique_genres):
+  genre_dict[genre] = i
+
+
+movies_transformed['genre_code'] = movies_transformed['genre'].map(genre_dict)
+#finding mean and std for every column to normalize
+mean_release_year = movies_transformed['release_year'].mean()
+std_release_year = movies_transformed['release_year'].std()
+mean_duration = movies_transformed['new_duration'].mean()
+std_duration = movies_transformed['new_duration'].std()
+mean_genre = movies_transformed['genre_code'].mean()
+std_genre = movies_transformed['genre_code'].std()
+movies_transformed_normalized = movies_transformed.copy().reset_index()
+movies_transformed_normalized['release_year'] = (movies_transformed_normalized['release_year'] -  mean_release_year) / std_release_year
+movies_transformed_normalized['new_duration'] = (movies_transformed_normalized['new_duration'] -  mean_duration) / std_duration
+movies_transformed_normalized['genre_code'] = (movies_transformed_normalized['genre_code'] -  mean_genre) / std_genre
+
+
+
+
+#targets and inputs splitting
+X = movies_transformed_normalized[['release_year'] +['genre_code']]
+y = movies_transformed_normalized['new_duration']
+
+X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2, random_state=42)
+model = LinearRegression()
+model.fit(X_train,y_train)
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test,y_pred)
+
+predictions = (model.predict(X)*std_duration) +mean_duration
+movies_list['predicted_duration'] = predictions
 def page_chart_2_2():
     st.title("Chart 2.2: Release Year vs Duration (Prediction)")
     st.write(f"The Mean Squared Error from the model is: {mse:.4f}")
@@ -250,16 +329,16 @@ def page_chart_2_2():
     )
 
     line = alt.Chart(genre_data).mark_line(color="red", strokeWidth=2).encode(
-        x=alt.X("release_year", scale=x_scale),
-        y=alt.Y("predicted_duration", scale=y_scale)
+        x=alt.X("release_year"),
+        y=alt.Y("predicted_duration")
     )
 
     # Combine scatter plot and line
-    chart = base + line
-    chart = chart.properties(
-        width=800,  # Customize chart width
-        height=400  # Customize chart height
-    )
+    chart = base +line
+    #chart = chart.properties(
+    #    width=800,  # Customize chart width
+    #    height=400  # Customize chart height
+    #)
 
     # Display the chart
     st.altair_chart(chart, use_container_width=True)
@@ -284,6 +363,9 @@ def page_chart_3():
     )
     st.altair_chart(tv_chart, use_container_width=True)
 
+def heatmap():
+    st.write("Heatmap for movie release per year and month")
+    heatmap_chart(data)
 
 ###########################################################
 ###########################################################
@@ -315,9 +397,9 @@ def sidebar_navigation():
             "📊 Average Movie Duration",  # Added MOHAMED's Chart 2.1
             "📊 Release Year vs Duration",  # Added MOHAMED's Chart 2.2
             "📊 Distribution by Country",  # Added MOHAMED's Chart 3
-            "Movie and TV Show Distribution by Country",
-            "\u2003\u2003\u2003🌍 Distribution of TV Shows by Country",
-            "\u2003\u2003\u2003🌍 Distribution of Movies by Country",
+            #"Movie and TV Show Distribution by Country",
+            #"\u2003\u2003\u2003🌍 Distribution of TV Shows by Country",
+            #"\u2003\u2003\u2003🌍 Distribution of Movies by Country",
             "Movie and TV Show Ratings",
             "\u2003\u2003\u2003⭐ Movie Ratings by Country",
             "\u2003\u2003\u2003⭐ TV Show Ratings by Country",
@@ -328,6 +410,7 @@ def sidebar_navigation():
             "🎥 Release Year Trends",
             "\u2003\u2003\u2003⚙️ Content Addition by Year",
             "\u2003\u2003\u2003🛠️ Number of Movies or TV Shows Added Annually",
+            "\u2003\u2003\u2003🛠️ Number of Movies Released Heatmap",
             "✅ References"
         ]
     )
@@ -337,7 +420,7 @@ def sidebar_navigation():
         <div style="text-align: center;">
             <h1 style="font-size: 24px; color: #333;">Group 3</h1>
             <p style="font-size: 14px; color: #333;">
-                Mohamed Ali Hossni, <br>Paige Berrigan, <br>Cantrin Chapman, <br>Kareem Idris, <br>Jack Ivanisevic
+                Jack Ivanisevic, <br>Mohamed Ali Hossni, <br>Paige Berrigan, <br>Kareem Idris, <br>Cantrin Chapman 
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -376,5 +459,6 @@ if menu:
         "📊 Average Movie Duration": page_chart_2_1,  # Added MOHAMED's Chart 2.1
         "📊 Release Year vs Duration": page_chart_2_2,  # Added MOHAMED's Chart 2.2
         "📊 Distribution by Country": page_chart_3,  # Added MOHAMED's Chart 3
+        "\u2003\u2003\u2003🛠️ Number of Movies Released Heatmap": heatmap,
         "✅ References": view_references_citations,
     }.get(menu, lambda: st.write("Page not found")))

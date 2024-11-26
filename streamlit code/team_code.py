@@ -22,6 +22,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 import plotly
+import altair as alt
 
 
 
@@ -1310,3 +1311,25 @@ def aggregate_by_country(data, content_type):
     filtered_data = grp_data[grp_data[f'Total {content_type}s'] > threshold].sort_values(by=f'Total {content_type}s')
     return filtered_data
 
+
+def heatmap_chart(data):
+    #As it changes datetime format for all, so it doesnt try reformatting after it changes
+    try:
+        data['date_added'] = pd.to_datetime(data['date_added'].str.strip(), format='%B %d, %Y')
+    except:
+        print("Date is already formatted")
+    #Making year and month columns for making the heatmap
+    data['year'] = data['date_added'].dt.year
+    data['month'] = data['date_added'].dt.month
+
+    #Grouping by year and month, counting occurunces
+    content_by_date = data.groupby(['year', 'month']).size().reset_index(name='count')
+
+    #Pivoting for the heatmap
+    content_pivot = content_by_date.pivot(index='year', columns='month', values='count')
+    heatmap = alt.Chart(content_by_date).mark_rect().encode(
+    x='month:O',
+    y='year:O',
+    color='count:Q'
+    )
+    st.altair_chart(heatmap, use_container_width=True)
