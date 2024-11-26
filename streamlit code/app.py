@@ -37,7 +37,6 @@ from team_code import (
     page_Chart_4
 )
 ##############################################################
-
 # Load data
 data = load_data('netflix_titles.csv')
 data = preprocess_data(data)
@@ -72,6 +71,7 @@ def introduction():
     <p>You can find the <a href="https://github.com/m-hossni/data_visualization_ML_F24" target="_blank">GitHub repository here</a>.</p>
     """, unsafe_allow_html=True)
 
+###### FUCNTIONS FOR PLOTS AND DATA DISPLAY ##################
 def data_table():
     st.write("### Netflix TV Shows and Movies Dataset")
     st.write("This dataset contains information about TV Shows and Movies available on Netflix.")
@@ -193,6 +193,8 @@ def get_genre_data():
     # Call the function from team_code.py to display the genre distribution and data
     display_genre_distribution(data)
     
+##########################################################
+
     
 #### MOHAMED CODE TO GO HERE ##############################
 ##########################################################
@@ -292,8 +294,6 @@ pages = {
     "Release Year vs Duration": page_chart_2_2,
     "Distribution by Country": page_chart_3
 }
-
-
 # Sidebar Navigation
 def sidebar_navigation():
      # Add an image above the page selection dropdown
